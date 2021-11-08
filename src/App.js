@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import Article from './components/Article';
+import Container from 'react-bootstrap/Container';
+import Alert from 'react-bootstrap/Alert';
+import Pagination from './components/Pagination';
+import Loading from './components/Loading';
+import SearchForm from './components/SearchForm';
+import ArticleList from './components/ArticleList';
 
 const App = () => {
   const [articles, setArticles] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
   const [query, setQuery] = useState('');
-  const [userInput, setUserInput] = useState('');
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -14,11 +20,12 @@ const App = () => {
       try {
         setLoading(true);
         const {
-          data: { hits }
+          data: { hits, nbPages }
         } = await axios.get(
-          `http://hn.algolia.com/api/v1/search_by_date?query=${query}&tags=story`
+          `http://hn.algolia.com/api/v1/search_by_date?query=${query}&tags=story&hitsPerPage=10&page=${page}`
         );
         setArticles(hits);
+        setTotalPages(nbPages);
         setLoading(false);
       } catch (error) {
         setError(error);
@@ -27,39 +34,16 @@ const App = () => {
       }
     };
     !error && getNews();
-  }, [query, error]);
+  }, [query, page, error]);
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    if (!userInput) return alert('Please type something before searching');
-    setQuery(userInput);
-  };
-
-  if (error) return <div>{error.message}</div>;
+  if (error) return <Alert variant='danger'>Something went wrong, we'll try again in a couple seconds...</Alert>;
 
   return (
-    <div>
-      <form onSubmit={handleSubmit}>
-        <input
-          type='text'
-          value={userInput}
-          placeholder='Search for anything tech...'
-          onChange={e => setUserInput(e.target.value)}
-        />
-        <button type='submit'>Search</button>
-      </form>
-      {loading ? (
-        'Loading...'
-      ) : articles.length ? (
-        <ul>
-          {articles.map(article => (
-            <Article key={article.objectID} article={article} />
-          ))}
-        </ul>
-      ) : (
-        'No results'
-      )}
-    </div>
+    <Container className='mt-5'>
+      <SearchForm setQuery={setQuery} />
+      <Pagination pageCount={totalPages} setPage={setPage} />
+      {loading ? <Loading animation='border' variant='primary' /> : <ArticleList articles={articles} />}
+    </Container>
   );
 };
 
